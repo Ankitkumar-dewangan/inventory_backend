@@ -26,7 +26,9 @@ const settingsRoutes = require('./src/routes/settingsRoutes');
 const app = express();
 
 // Security Middlewares
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors({
   origin: '*', // Allow all origins for dev simplicity, can restrict in production
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
