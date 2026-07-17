@@ -1,0 +1,121 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  password   String
+  role       String   @default("user") // "admin" or "user"
+  status     String   @default("active") // "active" or "inactive"
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Product {
+  id                   String                 @id @default(uuid())
+  productId            String                 @unique @map("product_id")
+  productName          String                 @map("product_name")
+  sku                  String                 @unique
+  category             String
+  description          String?
+  status               String                 @default("in-stock") // "in-stock", "low-stock", "out-of-stock"
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+  
+  // Relations
+  batches              InventoryBatch[]
+  sales                Sale[]
+  purchaseTransactions PurchaseTransaction[]
+  inventoryEvents      InventoryEvent[]
+
+  @@map("products")
+}
+
+model InventoryBatch {
+  id                String   @id @default(uuid())
+  productId         String   @map("product_id")
+  batchNumber       String   @map("batch_number")
+  purchaseQuantity  Int      @map("purchase_quantity")
+  remainingQuantity Int      @map("remaining_quantity")
+  unitCost          Float    @map("unit_cost")
+  purchaseDate      DateTime @map("purchase_date")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relations
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_batches")
+}
+
+model Sale {
+  id            String   @id @default(uuid())
+  productId     String   @map("product_id")
+  saleQuantity  Int      @map("sale_quantity")
+  fifoCost      Float    @map("fifo_cost")
+  saleDate      DateTime @map("sale_date")
+  customerName  String?  @map("customer_name")
+  invoiceNumber String?  @map("invoice_number")
+  remarks       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("sales")
+}
+
+model PurchaseTransaction {
+  id            String   @id @default(uuid())
+  productId     String   @map("product_id")
+  quantity      Int
+  unitPrice     Float    @map("unit_price")
+  batchNumber   String   @map("batch_number")
+  purchaseDate  DateTime @map("purchase_date")
+  supplierName  String?  @map("supplier_name")
+  invoiceNumber String?  @map("invoice_number")
+  gst           Float?
+  remarks       String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_transactions")
+}
+
+model InventoryEvent {
+  id          String   @id @default(uuid())
+  productId   String   @map("product_id")
+  eventType   String   @map("event_type") // "purchase" or "sale"
+  quantity    Int
+  unitPrice   Float    @map("unit_price")
+  status      String   @default("pending") // "pending", "success", "failed"
+  timestamp   DateTime @default(now())
+  processed   Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_events")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String
+  module      String
+  description String
+  performedBy String   @map("performed_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
+}

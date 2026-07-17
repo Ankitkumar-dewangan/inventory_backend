@@ -1,0 +1,255 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Premium Inventory Management System (FIFO) API",
+    "version": "1.0.0",
+    "description": "Backend API documentation for the FIFO Inventory Management System"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "message": { "type": "string", "example": "Something went wrong" },
+          "error": { "type": "object" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "summary": "Authenticate user & generate JWT",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "admin@example.com" },
+                  "password": { "type": "string", "example": "password123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authentication successful" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Log out from the session",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Logout successful" }
+        }
+      }
+    },
+    "/api/auth/profile": {
+      "get": {
+        "summary": "Retrieve authenticated user profile details",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Profile details retrieved successfully" }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "summary": "Retrieve paginated products list with search, sort, and filters",
+        "tags": ["Products"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["in-stock", "low-stock", "out-of-stock"] } },
+          { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "productName" } },
+          { "name": "sortOrder", "in": "query", "schema": { "type": "string", "default": "asc" } }
+        ],
+        "responses": {
+          "200": { "description": "Products list retrieved successfully" }
+        }
+      },
+      "post": {
+        "summary": "Create a new product (Admin only)",
+        "tags": ["Products"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["productId", "productName", "sku", "category"],
+                "properties": {
+                  "productId": { "type": "string", "example": "prod016" },
+                  "productName": { "type": "string", "example": "USB Hub 4-Port" },
+                  "sku": { "type": "string", "example": "USB-HB-4P" },
+                  "category": { "type": "string", "example": "Accessories" },
+                  "description": { "type": "string", "example": "High speed 4 port hub" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Product created successfully" }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "summary": "Get product details including batches and transaction history",
+        "tags": ["Products"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Product details retrieved" }
+        }
+      },
+      "put": {
+        "summary": "Update product details (Admin only)",
+        "tags": ["Products"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productName": { "type": "string" },
+                  "category": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Product updated successfully" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a product (Admin only)",
+        "tags": ["Products"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Product deleted successfully" }
+        }
+      }
+    },
+    "/api/inventory/summary": {
+      "get": {
+        "summary": "Get inventory KPI summary",
+        "tags": ["Inventory"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Summary retrieved" }
+        }
+      }
+    },
+    "/api/purchase": {
+      "post": {
+        "summary": "Log a purchase intake and trigger FIFO queue entry",
+        "tags": ["Purchase"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["productId", "quantity", "unitPrice", "batchNumber"],
+                "properties": {
+                  "productId": { "type": "string", "format": "uuid" },
+                  "quantity": { "type": "integer", "minimum": 1, "example": 100 },
+                  "unitPrice": { "type": "number", "minimum": 0.01, "example": 12.5 },
+                  "batchNumber": { "type": "string", "example": "BATCH-009" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Purchase registered successfully" }
+        }
+      }
+    },
+    "/api/sale": {
+      "post": {
+        "summary": "Process a sale, execute FIFO logic, and compute total cost of goods sold",
+        "tags": ["Sale"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["productId", "quantity"],
+                "properties": {
+                  "productId": { "type": "string", "format": "uuid" },
+                  "quantity": { "type": "integer", "minimum": 1, "example": 25 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Sale completed successfully" }
+        }
+      }
+    },
+    "/api/dashboard/summary": {
+      "get": {
+        "summary": "Get dashboard KPI statistics in real-time",
+        "tags": ["Dashboard"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Stats compiled" }
+        }
+      }
+    },
+    "/api/fifo/queue": {
+      "get": {
+        "summary": "Fetch the active/partial queue of unconsumed inventory batches",
+        "tags": ["FIFO Ledger"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Queue list" }
+        }
+      }
+    }
+  }
+}
